@@ -1,14 +1,26 @@
 // Firebase Configuration
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSyDemoKey-Replace-With-Your-Real-Key",
-    authDomain: "football-tracker-demo.firebaseapp.com",
-    databaseURL: "https://football-tracker-demo-default-rtdb.firebaseio.com",
-    projectId: "football-tracker-demo",
-    storageBucket: "football-tracker-demo.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:demo12345"
+  apiKey: "AIzaSyCV6xPahxFAJS2F7SqR5KJfEwfm8oJj0uE",
+  authDomain: "footbal-team-c5be0.firebaseapp.com",
+  databaseURL: "https://footbal-team-c5be0-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "footbal-team-c5be0",
+  storageBucket: "footbal-team-c5be0.firebasestorage.app",
+  messagingSenderId: "743510243228",
+  appId: "1:743510243228:web:82356ec42d6aef1ba73a59",
+  measurementId: "G-9DZF28VCFB"
 };
 
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
