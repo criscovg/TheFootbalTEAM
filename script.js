@@ -1,12 +1,4 @@
-// Firebase Configuration
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Firebase Configuration (using v8 compat library)
 const firebaseConfig = {
   apiKey: "AIzaSyCV6xPahxFAJS2F7SqR5KJfEwfm8oJj0uE",
   authDomain: "footbal-team-c5be0.firebaseapp.com",
@@ -18,9 +10,6 @@ const firebaseConfig = {
   measurementId: "G-9DZF28VCFB"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
@@ -1519,25 +1508,36 @@ function initializeFirebase() {
     console.log('Initializing Firebase connection...');
     updateConnectionStatus('connecting', 'Connecting...');
     
-    // Register this user as online
-    registerUser();
-    
-    // Listen for connection state
-    database.ref('.info/connected').on('value', (snapshot) => {
-        if (snapshot.val() === true) {
-            console.log('Connected to Firebase');
-            updateConnectionStatus('online', 'Live & Synchronized');
-            
-            // Set up real-time listeners
-            setupRealTimeListeners();
-        } else {
-            console.log('Disconnected from Firebase');
-            updateConnectionStatus('offline', 'Offline');
-        }
-    });
-    
-    // Load initial game state
-    loadGameState();
+    try {
+        // Test basic connection first
+        database.ref('.info/connected').on('value', (snapshot) => {
+            if (snapshot.val() === true) {
+                console.log('✅ Connected to Firebase successfully!');
+                updateConnectionStatus('online', 'Live & Synchronized');
+                
+                // Register this user as online
+                registerUser();
+                
+                // Set up real-time listeners
+                setupRealTimeListeners();
+                
+                // Load initial game state
+                loadGameState();
+            } else {
+                console.log('❌ Disconnected from Firebase');
+                updateConnectionStatus('offline', 'Connection lost');
+            }
+        }, (error) => {
+            console.error('❌ Firebase connection error:', error);
+            updateConnectionStatus('offline', 'Connection failed');
+            alert('Firebase connection failed. Check your internet connection and Firebase setup.');
+        });
+        
+    } catch (error) {
+        console.error('❌ Firebase initialization error:', error);
+        updateConnectionStatus('offline', 'Setup error');
+        alert('Firebase setup error: ' + error.message);
+    }
 }
 
 // Register current user and manage online presence
@@ -1792,8 +1792,37 @@ function saveEvents() {
     gameRef.child('events').set(events);
 }
 
+// Simple connection test
+function testFirebaseConnection() {
+    console.log('🔥 Testing Firebase connection...');
+    console.log('Database URL:', firebaseConfig.databaseURL);
+    
+    // Test write
+    database.ref('test').set({
+        message: 'Hello Firebase!',
+        timestamp: Date.now()
+    }).then(() => {
+        console.log('✅ Firebase write test successful!');
+    }).catch((error) => {
+        console.error('❌ Firebase write test failed:', error);
+        console.log('Check your Firebase Database rules!');
+    });
+}
+
 // Initialize Firebase when page loads
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing Firebase...');
-    initializeFirebase();
+    
+    // Add a small delay to ensure Firebase scripts are loaded
+    setTimeout(() => {
+        if (typeof firebase === 'undefined') {
+            console.error('❌ Firebase is not loaded! Check your internet connection.');
+            updateConnectionStatus('offline', 'Firebase not loaded');
+            return;
+        }
+        
+        console.log('✅ Firebase library loaded');
+        testFirebaseConnection();
+        initializeFirebase();
+    }, 1000);
 });
