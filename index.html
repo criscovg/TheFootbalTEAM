@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Match Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚽ Football Match Tracker</h1>
+            <div class="timer-section">
+                <div class="match-duration-selector">
+                    <label for="durationSelect">Match Duration:</label>
+                    <select id="durationSelect" class="duration-select">
+                        <option value="10">10 minutes</option>
+                        <option value="15">15 minutes</option>
+                        <option value="20">20 minutes</option>
+                        <option value="25">25 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">60 minutes</option>
+                    </select>
+                </div>
+                <div class="timer" id="timer">10:00</div>
+                <div class="timer-controls">
+                    <button id="startBtn" class="btn btn-start">Start Match</button>
+                    <button id="pauseBtn" class="btn btn-pause" disabled>Pause</button>
+                    <button id="resetBtn" class="btn btn-reset">Reset</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Match Status -->
+            <div class="match-status">
+                <div class="status-item">
+                    <span class="label">Match Status:</span>
+                    <span id="matchStatus" class="status">Ready to Start</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Format:</span>
+                    <span class="format">5+1 Synthetic Field</span>
+                </div>
+            </div>
+
+            <!-- Player Pool Section -->
+            <div class="player-pool-section">
+                <h3>🎯 Available Players</h3>
+                <div class="player-pool-controls">
+                    <button class="btn btn-add-to-pool" onclick="addToPlayerPool()">+ Add New Player</button>
+                    <button class="btn btn-create-teams" onclick="openTeamCreator()">⚖️ Create Teams</button>
+                    <button class="btn btn-manage-formations" onclick="openFormationManager()" id="formationBtn" disabled>📋 Manage Formations</button>
+                </div>
+                <div id="playerPool" class="player-pool">
+                    <p class="no-players">No players added yet. Add players to start creating teams!</p>
+                </div>
+            </div>
+
+            <!-- Live Scoreboard -->
+            <div id="liveScoreboard" class="live-scoreboard" style="display: none;">
+                <h3>🏆 Current Match Score</h3>
+                <div id="scoreboardGrid" class="scoreboard-grid">
+                    <!-- Team scores will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Quick Scoring Interface -->
+            <div id="quickScoringInterface" class="quick-scoring-interface" style="display: none;">
+                <h3>⚽ Quick Score Entry</h3>
+                <div class="scoring-mode-selector">
+                    <button id="goalModeBtn" class="btn btn-goal-select active" onclick="setQuickScoreMode('goal')">⚽ Record Goal</button>
+                    <button id="assistModeBtn" class="btn btn-assist-select" onclick="setQuickScoreMode('assist')">🅰️ Record Assist</button>
+                </div>
+                <div class="quick-scoring-teams" id="quickScoringTeams">
+                    <!-- Teams and players will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Teams Section -->
+            <div id="teamsContainer" class="teams-container">
+                <p class="no-teams">No teams created yet. Click "Create Teams" to start!</p>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button id="randomizeBtn" class="btn btn-randomize">🔀 Randomize Teams</button>
+                <button id="newMatchBtn" class="btn btn-new-match">🆕 New Match</button>
+            </div>
+
+            <!-- Event Log -->
+            <div class="event-log">
+                <h3>Match Events</h3>
+                <div id="eventsList" class="events-list">
+                    <p class="no-events">No events yet. Start the match to begin tracking!</p>
+                </div>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="leaderboard">
+                <h3>🏆 Player Leaderboard</h3>
+                <div class="stats-toggle">
+                    <button id="goalsTab" class="tab-btn active" onclick="showStats('goals')">Goals</button>
+                    <button id="assistsTab" class="tab-btn" onclick="showStats('assists')">Assists</button>
+                    <button id="totalTab" class="tab-btn" onclick="showStats('total')">Total Points</button>
+                </div>
+                <div id="leaderboardList" class="leaderboard-list">
+                    <p class="no-stats">Add players and start tracking to see statistics!</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Player Modal -->
+    <div id="playerModal" class="modal">
+        <div class="modal-content">
+            <h3>Add New Player to Pool</h3>
+            <input type="text" id="playerNameInput" placeholder="Enter player name" maxlength="20">
+            <div class="modal-buttons">
+                <button onclick="confirmAddToPool()" class="btn btn-confirm">Add Player</button>
+                <button onclick="closeModal()" class="btn btn-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Creator Modal -->
+    <div id="teamCreatorModal" class="modal">
+        <div class="modal-content team-creator-modal">
+            <h3>Create Teams</h3>
+            <div class="team-creator-controls">
+                <div class="team-count-selector">
+                    <label for="teamCount">Number of Teams:</label>
+                    <select id="teamCount" onchange="updateTeamCreator()">
+                        <option value="2">2 Teams</option>
+                        <option value="3">3 Teams</option>
+                        <option value="4">4 Teams</option>
+                        <option value="5">5 Teams</option>
+                        <option value="6">6 Teams</option>
+                    </select>
+                </div>
+                <div class="auto-assign-controls">
+                    <button class="btn btn-auto-assign" onclick="autoAssignPlayers()">🎲 Auto Assign Players</button>
+                </div>
+            </div>
+            <div class="team-creation-container">
+                <div class="available-players-section">
+                    <h4>Available Players</h4>
+                    <div id="creatorAvailablePlayersList" class="available-players-list">
+                        <!-- Available players will be shown here -->
+                    </div>
+                </div>
+                <div id="creatorTeamsSection" class="creator-teams-section">
+                    <!-- Teams will be generated dynamically -->
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="confirmTeamCreation()" class="btn btn-confirm">Create Teams</button>
+                <button onclick="closeTeamCreatorModal()" class="btn btn-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formation Manager Modal -->
+    <div id="formationModal" class="modal">
+        <div class="modal-content formation-modal">
+            <h3>Manage Team Formations</h3>
+            <div class="formation-tabs" id="formationTabs">
+                <!-- Team tabs will be generated dynamically -->
+            </div>
+            <div class="formation-content" id="formationContent">
+                <div class="formation-selector">
+                    <label for="formationSelect">Formation (5+1):</label>
+                    <select id="formationSelect" onchange="changeFormation()">
+                        <option value="2-2-1">2-2-1 (Balanced)</option>
+                        <option value="1-3-1">1-3-1 (Midfield Control)</option>
+                        <option value="2-1-2">2-1-2 (Attacking)</option>
+                        <option value="1-2-2">1-2-2 (Wing Play)</option>
+                        <option value="1-4-0">1-4-0 (All Midfield)</option>
+                        <option value="0-3-2">0-3-2 (Ultra Attacking)</option>
+                    </select>
+                    <button class="btn btn-auto-assign-formation" onclick="autoAssignFormation()">🎯 Auto Assign Positions</button>
+                </div>
+                <div class="formation-field" id="formationField">
+                    <!-- Formation visualization will be rendered here -->
+                </div>
+                <div class="unassigned-players" id="unassignedPlayers">
+                    <h4>Unassigned Players</h4>
+                    <div class="unassigned-list" id="unassignedList">
+                        <!-- Unassigned players will be shown here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button onclick="saveFormations()" class="btn btn-confirm">Save Formations</button>
+                <button onclick="closeFormationModal()" class="btn btn-cancel">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
