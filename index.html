@@ -5,11 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Football Match Tracker</title>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>⚽ Football Match Tracker</h1>
+            <div class="connection-status">
+                <div id="connectionStatus" class="status-indicator offline">
+                    <span id="statusText">Connecting...</span>
+                    <span id="userCount" class="user-count">👥 0 online</span>
+                </div>
+            </div>
             <div class="timer-section">
                 <div class="match-duration-selector">
                     <label for="durationSelect">Match Duration:</label>

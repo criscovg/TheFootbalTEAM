@@ -1,3 +1,23 @@
+// Firebase Configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDemoKey-Replace-With-Your-Real-Key",
+    authDomain: "football-tracker-demo.firebaseapp.com",
+    databaseURL: "https://football-tracker-demo-default-rtdb.firebaseio.com",
+    projectId: "football-tracker-demo",
+    storageBucket: "football-tracker-demo.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:demo12345"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// User session management
+let currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+let usersRef = database.ref('users');
+let gameRef = database.ref('gameState');
+
 // Global variables
 let matchDuration = 10; // Default 10 minutes
 let matchTime = 600; // Current time in seconds
@@ -181,6 +201,9 @@ function startMatch() {
     document.getElementById('startBtn').disabled = true;
     document.getElementById('pauseBtn').disabled = false;
     
+    // Save match state to Firebase
+    saveMatchState();
+    
     // Re-render all teams to update button states
     renderAllTeams();
     
@@ -188,16 +211,10 @@ function startMatch() {
     showLiveScoreboard();
     showQuickScoringInterface();
     
-    matchTimer = setInterval(function() {
-        matchTime--;
-        updateTimerDisplay();
-        
-        if (matchTime <= 0) {
-            endMatch();
-        }
-    }, 1000);
+    startMatchTimer();
     
     addEvent('Match started!', 'system');
+    saveEvents();
 }
 
 function pauseMatch() {
@@ -208,6 +225,9 @@ function pauseMatch() {
     document.getElementById('startBtn').disabled = false;
     document.getElementById('pauseBtn').disabled = true;
     
+    // Save match state to Firebase
+    saveMatchState();
+    
     // Re-render all teams to update button states
     renderAllTeams();
     
@@ -216,6 +236,7 @@ function pauseMatch() {
     showQuickScoringInterface();
     
     addEvent('Match paused', 'system');
+    saveEvents();
 }
 
 function resetMatch() {
@@ -337,6 +358,10 @@ function confirmAddToPool() {
             matchesPlayed: 0
         };
     }
+    
+    // Save to Firebase
+    savePlayerPool();
+    savePlayerStats();
     
     renderPlayerPool();
     updateLeaderboard();
@@ -464,6 +489,11 @@ function recordGoal(playerName) {
     const timeDisplay = document.getElementById('timer').textContent;
     addEvent(`⚽ ${playerName} scored for ${playerTeam.name}!`, 'goal', timeDisplay);
     
+    // Save to Firebase
+    saveCurrentMatchStats();
+    savePlayerStats();
+    saveEvents();
+    
     // Update scoreboard
     if (isMatchRunning) {
         renderLiveScoreboard();
@@ -505,6 +535,11 @@ function recordAssist(playerName) {
     // Add event
     const timeDisplay = document.getElementById('timer').textContent;
     addEvent(`🅰️ ${playerName} made an assist for ${playerTeam.name}!`, 'assist', timeDisplay);
+    
+    // Save to Firebase
+    saveCurrentMatchStats();
+    savePlayerStats();
+    saveEvents();
     
     // Update scoreboard
     if (isMatchRunning) {
@@ -867,6 +902,11 @@ function confirmTeamCreation() {
             overallPlayerStats[playerName].matchesPlayed++;
         });
     });
+    
+    // Save to Firebase
+    saveTeams();
+    savePlayerStats();
+    saveCurrentMatchStats();
     
     // Render teams
     renderAllTeams();
@@ -1457,3 +1497,291 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// ===============================
+// FIREBASE REAL-TIME FUNCTIONALITY
+// ===============================
+
+// Initialize Firebase connection and sync
+function initializeFirebase() {
+    console.log('Initializing Firebase connection...');
+    updateConnectionStatus('connecting', 'Connecting...');
+    
+    // Register this user as online
+    registerUser();
+    
+    // Listen for connection state
+    database.ref('.info/connected').on('value', (snapshot) => {
+        if (snapshot.val() === true) {
+            console.log('Connected to Firebase');
+            updateConnectionStatus('online', 'Live & Synchronized');
+            
+            // Set up real-time listeners
+            setupRealTimeListeners();
+        } else {
+            console.log('Disconnected from Firebase');
+            updateConnectionStatus('offline', 'Offline');
+        }
+    });
+    
+    // Load initial game state
+    loadGameState();
+}
+
+// Register current user and manage online presence
+function registerUser() {
+    const userRef = usersRef.child(currentUserId);
+    
+    // Set user as online
+    userRef.set({
+        online: true,
+        lastSeen: firebase.database.ServerValue.TIMESTAMP
+    });
+    
+    // Remove user when they disconnect
+    userRef.onDisconnect().remove();
+    
+    // Listen to online users count
+    usersRef.on('value', (snapshot) => {
+        const users = snapshot.val() || {};
+        const onlineCount = Object.keys(users).length;
+        updateUserCount(onlineCount);
+    });
+}
+
+// Update connection status indicator
+function updateConnectionStatus(status, text) {
+    const statusElement = document.getElementById('connectionStatus');
+    const textElement = document.getElementById('statusText');
+    
+    statusElement.className = `status-indicator ${status}`;
+    textElement.textContent = text;
+}
+
+// Update online user count
+function updateUserCount(count) {
+    const userCountElement = document.getElementById('userCount');
+    userCountElement.textContent = `👥 ${count} online`;
+}
+
+// Set up real-time listeners for game state
+function setupRealTimeListeners() {
+    // Listen for player pool changes
+    gameRef.child('playerPool').on('value', (snapshot) => {
+        const data = snapshot.val() || [];
+        if (JSON.stringify(data) !== JSON.stringify(playerPool)) {
+            playerPool = data;
+            renderPlayerPool();
+            console.log('Player pool updated from server');
+        }
+    });
+    
+    // Listen for teams changes
+    gameRef.child('teams').on('value', (snapshot) => {
+        const data = snapshot.val() || [];
+        if (JSON.stringify(data) !== JSON.stringify(teams)) {
+            teams = data;
+            renderAllTeams();
+            updateTeamCreator();
+            if (isMatchRunning) {
+                showLiveScoreboard();
+                showQuickScoringInterface();
+            }
+            console.log('Teams updated from server');
+        }
+    });
+    
+    // Listen for match state changes
+    gameRef.child('matchState').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            const wasRunning = isMatchRunning;
+            isMatchRunning = data.isRunning || false;
+            matchTime = data.time || 600;
+            matchDuration = data.duration || 10;
+            
+            // Update UI elements
+            updateTimerDisplay();
+            updateMatchControls();
+            
+            // Handle match state transitions
+            if (isMatchRunning && !wasRunning) {
+                console.log('Match started by another player');
+                if (!matchTimer) {
+                    startMatchTimer();
+                }
+                showLiveScoreboard();
+                showQuickScoringInterface();
+            } else if (!isMatchRunning && wasRunning) {
+                console.log('Match paused/stopped by another player');
+                if (matchTimer) {
+                    clearInterval(matchTimer);
+                    matchTimer = null;
+                }
+                hideQuickScoringInterface();
+            }
+            
+            renderAllTeams();
+        }
+    });
+    
+    // Listen for player stats changes
+    gameRef.child('playerStats').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        if (JSON.stringify(data) !== JSON.stringify(overallPlayerStats)) {
+            overallPlayerStats = data;
+            updateLeaderboard();
+            console.log('Player stats updated from server');
+        }
+    });
+    
+    // Listen for current match stats
+    gameRef.child('currentMatchStats').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        currentMatchStats = data;
+        renderAllTeams();
+        if (isMatchRunning) {
+            renderLiveScoreboard();
+            renderQuickScoringTeams();
+        }
+    });
+    
+    // Listen for events
+    gameRef.child('events').on('value', (snapshot) => {
+        const data = snapshot.val() || [];
+        if (JSON.stringify(data) !== JSON.stringify(events)) {
+            events = data;
+            updateEventLog();
+            console.log('Events updated from server');
+        }
+    });
+}
+
+// Load initial game state from Firebase
+function loadGameState() {
+    gameRef.once('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            console.log('Loading game state from server...');
+            
+            // Load all data
+            playerPool = data.playerPool || [];
+            teams = data.teams || [];
+            overallPlayerStats = data.playerStats || {};
+            currentMatchStats = data.currentMatchStats || {};
+            events = data.events || [];
+            
+            // Load match state
+            const matchState = data.matchState || {};
+            isMatchRunning = matchState.isRunning || false;
+            matchTime = matchState.time || 600;
+            matchDuration = matchState.duration || 10;
+            
+            // Update duration selector
+            document.getElementById('durationSelect').value = matchDuration;
+            
+            // Render everything
+            renderPlayerPool();
+            renderAllTeams();
+            updateLeaderboard();
+            updateEventLog();
+            updateTimerDisplay();
+            updateMatchControls();
+            
+            // If match is running, start the timer
+            if (isMatchRunning) {
+                startMatchTimer();
+                showLiveScoreboard();
+                showQuickScoringInterface();
+            }
+            
+            console.log('Game state loaded successfully');
+        } else {
+            console.log('No existing game state found');
+        }
+    });
+}
+
+// Save game state to Firebase
+function saveGameState() {
+    const gameState = {
+        playerPool: playerPool,
+        teams: teams,
+        playerStats: overallPlayerStats,
+        currentMatchStats: currentMatchStats,
+        events: events,
+        matchState: {
+            isRunning: isMatchRunning,
+            time: matchTime,
+            duration: matchDuration
+        },
+        lastUpdated: firebase.database.ServerValue.TIMESTAMP
+    };
+    
+    gameRef.set(gameState).catch(error => {
+        console.error('Error saving game state:', error);
+    });
+}
+
+// Timer synchronization for users joining mid-match
+function startMatchTimer() {
+    if (matchTimer) {
+        clearInterval(matchTimer);
+    }
+    
+    let timerTicks = 0;
+    matchTimer = setInterval(function() {
+        matchTime--;
+        updateTimerDisplay();
+        timerTicks++;
+        
+        // Save to Firebase every 5 seconds to reduce bandwidth
+        if (timerTicks % 5 === 0) {
+            saveMatchState();
+        }
+        
+        if (matchTime <= 0) {
+            endMatch();
+        }
+    }, 1000);
+}
+
+function updateMatchControls() {
+    document.getElementById('startBtn').disabled = isMatchRunning;
+    document.getElementById('pauseBtn').disabled = !isMatchRunning;
+}
+
+// Save specific data sections
+function savePlayerPool() {
+    gameRef.child('playerPool').set(playerPool);
+}
+
+function saveTeams() {
+    gameRef.child('teams').set(teams);
+}
+
+function savePlayerStats() {
+    gameRef.child('playerStats').set(overallPlayerStats);
+}
+
+function saveCurrentMatchStats() {
+    gameRef.child('currentMatchStats').set(currentMatchStats);
+}
+
+function saveMatchState() {
+    gameRef.child('matchState').set({
+        isRunning: isMatchRunning,
+        time: matchTime,
+        duration: matchDuration
+    });
+}
+
+function saveEvents() {
+    gameRef.child('events').set(events);
+}
+
+// Initialize Firebase when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing Firebase...');
+    initializeFirebase();
+});

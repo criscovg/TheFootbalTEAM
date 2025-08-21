@@ -4,6 +4,12 @@ A comprehensive, one-page web application for tracking football matches between 
 
 ## 🎯 Key Features
 
+### 🚀 **MULTIPLAYER REAL-TIME**
+- **Live Synchronization**: All players see the same data instantly across devices
+- **Persistent Data**: Nothing gets lost on page refresh - everything saved to cloud
+- **Online Presence**: See who's currently connected to the game
+- **Real-time Updates**: Timer, scores, events sync automatically between all users
+
 ### Match Management
 - **Customizable Timer**: Choose from 10, 15, 20, 25, 30, 45, or 60-minute matches
 - **Live Scoreboard**: Real-time team scores displayed prominently
@@ -31,12 +37,19 @@ A comprehensive, one-page web application for tracking football matches between 
 
 ## 🚀 Quick Start
 
-### Option 1: Local File
+### Option 1: Try Demo Mode (Works Offline)
 1. Download all files (`index.html`, `style.css`, `script.js`)
 2. Open `index.html` in any modern web browser
-3. Start playing!
+3. **Note**: Demo mode shows offline status but app works locally
 
-### Option 2: Local Server (Recommended)
+### Option 2: Full Multiplayer Mode (Recommended)
+1. **Follow `firebase-setup.md`** to set up Firebase (5 minutes)
+2. Replace the demo config in `script.js` with your real Firebase config
+3. Deploy to any hosting service (Netlify, Vercel, GitHub Pages)
+4. **Share the URL** with your football friends!
+5. **Everyone sees live updates** in real-time!
+
+### Option 3: Local Server Testing
 1. Open terminal/command prompt in the project folder
 2. Run: `python -m http.server 8000`
 3. Visit: `http://localhost:8000`
