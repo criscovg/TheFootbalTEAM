@@ -28,6 +28,7 @@ let playerPool = []; // All available players
 let teams = []; // Array of team objects
 let overallPlayerStats = {}; // Persistent stats across all matches
 let currentMatchStats = {}; // Stats for current match only
+let teamScores = {}; // Track team scores: {teamId: score}
 let events = [];
 let teamFormations = {}; // Store formations for each team
 let currentFormationTeam = 0; // Currently selected team in formation manager
@@ -477,10 +478,26 @@ function recordGoal(playerName) {
         return;
     }
     
-    // Update score
+    // Update team score tracking
+    if (!teamScores[playerTeam.id]) {
+        teamScores[playerTeam.id] = 0;
+    }
+    teamScores[playerTeam.id]++;
+    
+    // Update score display
     const scoreElement = document.getElementById(`score${playerTeam.id}`);
-    const currentScore = parseInt(scoreElement.textContent);
-    scoreElement.textContent = currentScore + 1;
+    if (!scoreElement) {
+        console.error(`Score element not found for team ${playerTeam.id}! Re-rendering teams...`);
+        renderAllTeams();
+        // Try again after re-rendering
+        const retryScoreElement = document.getElementById(`score${playerTeam.id}`);
+        if (retryScoreElement) {
+            retryScoreElement.textContent = teamScores[playerTeam.id];
+        }
+    } else {
+        scoreElement.textContent = teamScores[playerTeam.id];
+        console.log(`Updated score for ${playerTeam.name}: ${teamScores[playerTeam.id]}`);
+    }
     
     // Re-render team to update stats
     renderTeamPlayers(playerTeam);
@@ -493,6 +510,7 @@ function recordGoal(playerName) {
     // Save to Firebase
     saveCurrentMatchStats();
     savePlayerStats();
+    saveTeamScores();
     saveEvents();
     
     // Update scoreboard
@@ -603,11 +621,13 @@ function updateScores() {
 function resetScores() {
     updateScores();
     
-    // Reset current match stats but keep overall stats
+    // Reset current match stats and team scores but keep overall stats
     currentMatchStats = {};
+    teamScores = {};
     
     // Re-render all teams
     renderAllTeams();
+    updateTeamScoreDisplays();
 }
 
 // Leaderboard
@@ -884,8 +904,9 @@ function confirmTeamCreation() {
         team.name = getRandomTeamName();
     });
     
-    // Reset match stats
+    // Reset match stats and team scores
     currentMatchStats = {};
+    teamScores = {};
     
     // Initialize team formations
     teams.forEach(team => {
@@ -1375,7 +1396,7 @@ function createScoreboardTeamElement(team) {
     const teamDiv = document.createElement('div');
     teamDiv.className = `scoreboard-team team-${team.id}`;
     
-    const currentScore = document.getElementById(`score${team.id}`)?.textContent || '0';
+    const currentScore = teamScores[team.id] || 0;
     
     teamDiv.innerHTML = `
         <div class="scoreboard-team-name">${team.name}</div>
@@ -1658,6 +1679,16 @@ function setupRealTimeListeners() {
         }
     });
     
+    // Listen for team scores changes
+    gameRef.child('teamScores').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        if (JSON.stringify(data) !== JSON.stringify(teamScores)) {
+            teamScores = data;
+            updateTeamScoreDisplays();
+            console.log('Team scores updated from server');
+        }
+    });
+    
     // Listen for events
     gameRef.child('events').on('value', (snapshot) => {
         const data = snapshot.val() || [];
@@ -1681,6 +1712,7 @@ function loadGameState() {
             teams = data.teams || [];
             overallPlayerStats = data.playerStats || {};
             currentMatchStats = data.currentMatchStats || {};
+            teamScores = data.teamScores || {};
             events = data.events || [];
             
             // Load match state
@@ -1721,6 +1753,7 @@ function saveGameState() {
         teams: teams,
         playerStats: overallPlayerStats,
         currentMatchStats: currentMatchStats,
+        teamScores: teamScores,
         events: events,
         matchState: {
             isRunning: isMatchRunning,
@@ -1790,6 +1823,25 @@ function saveMatchState() {
 
 function saveEvents() {
     gameRef.child('events').set(events);
+}
+
+function saveTeamScores() {
+    gameRef.child('teamScores').set(teamScores);
+}
+
+function updateTeamScoreDisplays() {
+    teams.forEach(team => {
+        const scoreElement = document.getElementById(`score${team.id}`);
+        if (scoreElement) {
+            const score = teamScores[team.id] || 0;
+            scoreElement.textContent = score;
+        }
+    });
+    
+    // Also update live scoreboard if running
+    if (isMatchRunning) {
+        renderLiveScoreboard();
+    }
 }
 
 // Simple connection test
