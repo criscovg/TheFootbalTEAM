@@ -38,6 +38,7 @@
                     <button id="startBtn" class="btn btn-start">Start Match</button>
                     <button id="pauseBtn" class="btn btn-pause" disabled>Pause</button>
                     <button id="resetBtn" class="btn btn-reset">Reset</button>
+                    <button id="forceResetBtn" class="btn btn-force-reset" onclick="forceResetTimer()" title="Force reset timer if stuck">🔄 Force Reset</button>
                 </div>
             </div>
         </header>
@@ -62,6 +63,7 @@
                     <button class="btn btn-add-to-pool" onclick="addToPlayerPool()">+ Add New Player</button>
                     <button class="btn btn-create-teams" onclick="openTeamCreator()">⚖️ Create Teams</button>
                     <button class="btn btn-manage-formations" onclick="openFormationManager()" id="formationBtn" disabled>📋 Manage Formations</button>
+                    <button class="btn btn-clear-pool" onclick="clearPlayerPool()" title="Clear all players (debugging)" style="background-color: #e74c3c;">🗑️ Clear Pool</button>
                 </div>
                 <div id="playerPool" class="player-pool">
                     <p class="no-players">No players added yet. Add players to start creating teams!</p>

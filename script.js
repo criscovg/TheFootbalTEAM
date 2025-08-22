@@ -310,16 +310,23 @@ function updateTimerDisplay() {
     const minutes = Math.floor(matchTime / 60);
     const seconds = matchTime % 60;
     const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    document.getElementById('timer').textContent = display;
     
-    // Change color when time is running low
+    console.log('Updating timer display:', matchTime, 'seconds =', display);
+    
     const timerElement = document.getElementById('timer');
-    if (matchTime <= 60) {
-        timerElement.style.color = '#e74c3c';
-        timerElement.style.animation = 'pulse 1s infinite';
+    if (timerElement) {
+        timerElement.textContent = display;
+        
+        // Change color when time is running low
+        if (matchTime <= 60) {
+            timerElement.style.color = '#e74c3c'; // Red when time is low
+            timerElement.style.animation = 'pulse 1s infinite';
+        } else {
+            timerElement.style.color = '#2ecc71'; // Green when time is normal
+            timerElement.style.animation = 'none';
+        }
     } else {
-        timerElement.style.color = '#e74c3c';
-        timerElement.style.animation = 'none';
+        console.error('Timer element not found!');
     }
 }
 
@@ -338,19 +345,31 @@ function addToPlayerPool() {
 function confirmAddToPool() {
     const playerName = document.getElementById('playerNameInput').value.trim();
     
+    console.log('Attempting to add player:', playerName);
+    console.log('Current player pool:', playerPool);
+    
     if (!playerName) {
         alert('Please enter a player name!');
         return;
     }
     
-    // Check if player already exists in pool
-    if (playerPool.includes(playerName)) {
-        alert('Player already exists in the pool! Please choose a different name.');
+    // Check if player already exists in pool (case-insensitive and trimmed)
+    const normalizedPlayerName = playerName.toLowerCase().trim();
+    const existingPlayer = playerPool.find(existing => 
+        existing.toLowerCase().trim() === normalizedPlayerName
+    );
+    
+    console.log('Normalized player name:', normalizedPlayerName);
+    console.log('Existing player found:', existingPlayer);
+    
+    if (existingPlayer) {
+        alert(`Player "${existingPlayer}" already exists in the pool! Please choose a different name.`);
         return;
     }
     
     // Add player to pool
     playerPool.push(playerName);
+    console.log('Player added successfully. New pool:', playerPool);
     
     // Initialize overall player stats if doesn't exist
     if (!overallPlayerStats[playerName]) {
@@ -1602,10 +1621,15 @@ function setupRealTimeListeners() {
     // Listen for player pool changes
     gameRef.child('playerPool').on('value', (snapshot) => {
         const data = snapshot.val() || [];
+        console.log('Player pool data received from Firebase:', data);
+        console.log('Current local player pool:', playerPool);
+        
         if (JSON.stringify(data) !== JSON.stringify(playerPool)) {
+            console.log('Player pool updated from server');
             playerPool = data;
             renderPlayerPool();
-            console.log('Player pool updated from server');
+        } else {
+            console.log('Player pool data unchanged');
         }
     });
     
@@ -1628,10 +1652,13 @@ function setupRealTimeListeners() {
     gameRef.child('matchState').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
+            console.log('Match state updated from Firebase:', data);
             const wasRunning = isMatchRunning;
             isMatchRunning = data.isRunning || false;
             matchTime = data.time || 600;
             matchDuration = data.duration || 10;
+            
+            console.log('Updated match state - isRunning:', isMatchRunning, 'matchTime:', matchTime, 'matchDuration:', matchDuration);
             
             // Update UI elements
             updateTimerDisplay();
@@ -1774,9 +1801,11 @@ function startMatchTimer() {
         clearInterval(matchTimer);
     }
     
+    console.log('Starting match timer, current time:', matchTime, 'seconds');
     let timerTicks = 0;
     matchTimer = setInterval(function() {
         matchTime--;
+        console.log('Timer tick:', matchTime, 'seconds remaining');
         updateTimerDisplay();
         timerTicks++;
         
@@ -1786,6 +1815,7 @@ function startMatchTimer() {
         }
         
         if (matchTime <= 0) {
+            console.log('Match time expired, ending match');
             endMatch();
         }
     }, 1000);
@@ -1796,9 +1826,53 @@ function updateMatchControls() {
     document.getElementById('pauseBtn').disabled = !isMatchRunning;
 }
 
+// Function to force reset timer if it gets stuck
+function forceResetTimer() {
+    console.log('Force resetting timer...');
+    console.log('Current timer state - isMatchRunning:', isMatchRunning, 'matchTime:', matchTime, 'matchTimer:', matchTimer);
+    
+    if (matchTimer) {
+        clearInterval(matchTimer);
+        matchTimer = null;
+        console.log('Cleared existing timer interval');
+    }
+    
+    matchTime = matchDuration * 60;
+    updateTimerDisplay();
+    console.log('Timer force reset to:', matchTime, 'seconds');
+    
+    // Also reset match state
+    isMatchRunning = false;
+    updateMatchStatus('Ready to Start');
+    updateMatchControls();
+    
+    // Save to Firebase
+    saveMatchState();
+}
+
+// Function to clear player pool for debugging (use with caution)
+function clearPlayerPool() {
+    if (confirm('Are you sure you want to clear all players? This cannot be undone!')) {
+        console.log('Clearing player pool...');
+        playerPool = [];
+        overallPlayerStats = {};
+        savePlayerPool();
+        savePlayerStats();
+        renderPlayerPool();
+        updateLeaderboard();
+        console.log('Player pool cleared');
+    }
+}
+
 // Save specific data sections
 function savePlayerPool() {
-    gameRef.child('playerPool').set(playerPool);
+    console.log('Saving player pool to Firebase:', playerPool);
+    
+    gameRef.child('playerPool').set(playerPool).then(() => {
+        console.log('Player pool saved successfully');
+    }).catch((error) => {
+        console.error('Error saving player pool:', error);
+    });
 }
 
 function saveTeams() {
@@ -1814,10 +1888,18 @@ function saveCurrentMatchStats() {
 }
 
 function saveMatchState() {
-    gameRef.child('matchState').set({
+    const matchState = {
         isRunning: isMatchRunning,
         time: matchTime,
         duration: matchDuration
+    };
+    
+    console.log('Saving match state to Firebase:', matchState);
+    
+    gameRef.child('matchState').set(matchState).then(() => {
+        console.log('Match state saved successfully');
+    }).catch((error) => {
+        console.error('Error saving match state:', error);
     });
 }
 

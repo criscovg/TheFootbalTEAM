@@ -172,6 +172,24 @@ h1 {
     color: white;
 }
 
+.btn-force-reset {
+    background: #f39c12;
+    color: white;
+}
+
+.btn-force-reset:hover {
+    background: #e67e22;
+}
+
+.btn-clear-pool {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-clear-pool:hover {
+    background: #c0392b;
+}
+
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
